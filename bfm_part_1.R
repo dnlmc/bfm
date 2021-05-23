@@ -73,6 +73,7 @@ graph_ba <- graph_ba %>% activate(nodes) %>% mutate(resources = resources,
                                                   endangered = resources < 15) %>% 
   activate(edges) %>% mutate(edge_weight = ba_friend_weight)  
   
+# sw graph
 sw_friend_weight <- rnorm(150,0,.3) %>% min_max_norm() #%>% hist() 
 
 set.seed(33)
