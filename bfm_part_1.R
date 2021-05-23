@@ -420,4 +420,696 @@ save_gif(sim_gif_maker_er(7), gif_file = "fractal_er_7.gif", width = 800, height
          delay = .12, loop = TRUE, progress = TRUE, res=133)
          
 
-##### tk BA baseline & fractal sim etc
+
+##### BA graph simulation & animated gif visualization functions ----------
+sim_gif_maker_ba <- function(years){
+  
+  # create empty tibble to store values from each iteration
+  sim_stats_ba <<- tibble(iteration = integer(),
+                          nodes = integer(),
+                          endangered = integer(),
+                          precarity_proportion = numeric(),
+                          total_resources = numeric(),
+                          median_resources = numeric(),
+                          mean_resources = numeric(),
+                          node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    
+    set.seed(333^3)
+    p1 <- ggraph(graph_ba, layout = 'gem') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) + 
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) )  +
+      scale_edge_width_continuous(limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Barabási–Albert graph: baseline simulation',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_ba)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    
+    p2 <- as.list(graph_ba)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_ba_row <- tibble_row(iteration = counter,
+                                   nodes = length(as.list(graph_ba)$nodes$endangered),
+                                   endangered = sum(as.list(graph_ba)$nodes$endangered),
+                                   precarity_proportion = sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                   total_resources = sum(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                   median_resources = median(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                   mean_resources = mean(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                   node_list = list(as_tibble(as.list(graph_ba)$nodes)$resources)
+    )
+    
+    sim_stats_ba <<- sim_stats_ba %>% bind_rows(sim_stats_ba_row)
+    
+    # increment graph via increment function
+    graph_ba <- graph_sim_increment(graph_ba)
+    
+    counter <- counter+1
+    
+  }
+}
+
+# BA fractal strategy sim & animation
+fractal_gif_maker_ba <- function(years){
+  
+  # create tibble to store values from each iteration
+  sim_stats_ba_fractal <<- tibble(iteration = integer(),
+                                  nodes = integer(), 
+                                  endangered = integer(),
+                                  precarity_proportion = numeric(),
+                                  total_resources = numeric(),
+                                  median_resources = numeric(),
+                                  mean_resources = numeric(),
+                                  node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    set.seed(333^3)
+    p1 <- ggraph(graph_ba, layout = 'gem') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) + 
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red2')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) )  +
+      scale_edge_width_continuous(
+        limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Barabási–Albert graph: fractal solidarity strategy',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_ba)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    p2 <- as.list(graph_ba)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_ba_fractal_row <- tibble_row(iteration = counter,
+                                   nodes = length(as.list(graph_ba)$nodes$endangered),
+                                   endangered = sum(as.list(graph_ba)$nodes$endangered),
+                                   precarity_proportion = sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                   total_resources = sum(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                   median_resources = median(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                   mean_resources = mean(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                   node_list = list(as_tibble(as.list(graph_ba)$nodes)$resources)
+    )
+    
+    sim_stats_ba_fractal <<- sim_stats_ba_fractal %>% bind_rows(sim_stats_ba_fractal_row)
+    
+    # increment graph via increment function
+    graph_ba <- graph_sim_increment(graph_ba)
+    
+    # apply fractal solidarity strategy
+    graph_ba <- graph_sim_fractal_strategy(graph_ba)
+    
+    counter <- counter+1
+  }
+}
+
+# BA barbell strategy simulation & animation 
+barbell_gif_maker_ba <- function(years){
+  
+  # create tibble to store values from each iteration
+  sim_stats_ba_barbell <<- tibble(iteration = integer(),
+                                  nodes = integer(), 
+                                  endangered = integer(),
+                                  precarity_proportion = numeric(),
+                                  total_resources = numeric(),
+                                  median_resources = numeric(),
+                                  mean_resources = numeric(),
+                                  global_funds = numeric(),
+                                  node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    set.seed(333^3)
+    p1 <- ggraph(graph_ba, layout = 'gem') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) + 
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red2')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) )  +
+      scale_edge_width_continuous(
+        limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Barabási–Albert graph: barbell solidarity strategy',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_ba)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    p2 <- as.list(graph_ba)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_ba_barbell_row <- tibble_row(iteration = counter,
+                                           nodes = length(as.list(graph_ba)$nodes$endangered),
+                                           endangered = sum(as.list(graph_ba)$nodes$endangered),
+                                           precarity_proportion = sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                           total_resources = sum(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                           median_resources = median(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                           mean_resources = mean(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                           global_funds = ifelse(exists('global_fund'), global_fund, 0.0),
+                                           node_list = list(as_tibble(as.list(graph_ba)$nodes)$resources)
+    )
+    
+    sim_stats_ba_barbell <<- sim_stats_ba_barbell %>% bind_rows(sim_stats_ba_barbell_row)
+    
+    # increment graph via increment function
+    graph_ba <- graph_sim_increment(graph_ba)
+    
+    # apply barbell solidarity strategy
+    graph_ba <- graph_sim_barbell_strategy(graph_ba)
+    
+    counter <- counter+1
+  }
+}
+
+
+# BA memelord strategy simulation & animation
+memelord_gif_maker_ba <- function(years){
+  
+  # create tibble to store values from each iteration
+  sim_stats_ba_memelord <<- tibble(iteration = integer(),
+                                  nodes = integer(), 
+                                  endangered = integer(),
+                                  precarity_proportion = numeric(),
+                                  total_resources = numeric(),
+                                  median_resources = numeric(),
+                                  mean_resources = numeric(),
+                                  node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    set.seed(333^3)
+    p1 <- ggraph(graph_ba, layout = 'gem') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) + 
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red2')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) )  +
+      scale_edge_width_continuous(
+        limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Barabási–Albert graph: memelord solidarity strategy',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_ba)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    p2 <- as.list(graph_ba)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_ba)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_ba_memelord_row <- tibble_row(iteration = counter,
+                                           nodes = length(as.list(graph_ba)$nodes$endangered),
+                                           endangered = sum(as.list(graph_ba)$nodes$endangered),
+                                           precarity_proportion = sum(as.list(graph_ba)$nodes$endangered) / length(as.list(graph_ba)$nodes$endangered),
+                                           total_resources = sum(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                           median_resources = median(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                           mean_resources = mean(as_tibble(as.list(graph_ba)$nodes)$resources),
+                                           node_list = list(as_tibble(as.list(graph_ba)$nodes)$resources)
+    )
+    
+    sim_stats_ba_memelord <<- sim_stats_ba_memelord %>% bind_rows(sim_stats_ba_memelord_row)
+    
+    # increment graph via increment function
+    graph_ba <- graph_sim_increment(graph_ba)
+    
+    # apply memelord solidarity strategy
+    graph_ba <- graph_sim_memelord_strategy(graph_ba)
+    
+    counter <- counter+1
+  }
+}
+
+
+##### SW simulation & animation functions ---------------------
+
+# SW baseline simulation & animation
+sim_gif_maker_sw <- function(years){
+  
+  # create empty tibble to store values from each iteration
+  sim_stats_sw <<- tibble(iteration = integer(),
+                          nodes = integer(),
+                          endangered = integer(),
+                          precarity_proportion = numeric(),
+                          total_resources = numeric(),
+                          median_resources = numeric(),
+                          mean_resources = numeric(),
+                          node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    set.seed(333^3)
+    p1 <- ggraph(graph_sw, layout = 'nicely') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) +
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) 
+      ) +
+      scale_edge_width_continuous(limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Watts–Strogatz (small world) graph: baseline simulation',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_sw)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    
+    p2 <- as.list(graph_sw)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_sw_row <- tibble_row(iteration = counter,
+                                   nodes = length(as.list(graph_sw)$nodes$endangered),
+                                   endangered = sum(as.list(graph_sw)$nodes$endangered),
+                                   precarity_proportion = sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                   total_resources = sum(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                   median_resources = median(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                   mean_resources = mean(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                   node_list = list(as_tibble(as.list(graph_sw)$nodes)$resources)
+    )
+    
+    sim_stats_sw <<- sim_stats_sw %>% bind_rows(sim_stats_sw_row)
+    
+    # increment graph via increment function
+    graph_sw <- graph_sim_increment(graph_sw)
+    
+    counter <- counter+1
+  }
+}
+
+
+# SW fractal strategy simulation & animation
+fractal_gif_maker_sw <- function(years){
+  
+  # create empty tibble to store values from each iteration
+  sim_stats_sw_fractal <<- tibble(iteration = integer(),
+                          nodes = integer(),
+                          endangered = integer(),
+                          precarity_proportion = numeric(),
+                          total_resources = numeric(),
+                          median_resources = numeric(),
+                          mean_resources = numeric(),
+                          node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    set.seed(333^3)
+    p1 <- ggraph(graph_sw, layout = 'nicely') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) + 
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) 
+      ) +
+      scale_edge_width_continuous(
+        limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Watts–Strogatz (small world) graph: fractal strategy',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_sw)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    
+    p2 <- as.list(graph_sw)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_sw_fractal_row <- tibble_row(iteration = counter,
+                                   nodes = length(as.list(graph_sw)$nodes$endangered),
+                                   endangered = sum(as.list(graph_sw)$nodes$endangered),
+                                   precarity_proportion = sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                   total_resources = sum(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                   median_resources = median(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                   mean_resources = mean(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                   node_list = list(as_tibble(as.list(graph_sw)$nodes)$resources)
+    )
+    
+    sim_stats_sw_fractal <<- sim_stats_sw_fractal %>% bind_rows(sim_stats_sw_fractal_row)
+    
+    # increment graph via increment function
+    graph_sw <- graph_sim_increment(graph_sw)
+    
+    # apply fractal solidarity strategy
+    graph_sw <- graph_sim_fractal_strategy(graph_sw)
+    
+    counter <- counter+1
+  }
+}
+
+
+# SW barbell strategy simulation & animation
+barbell_gif_maker_sw <- function(years){
+  
+  # create empty tibble to store values from each iteration
+  sim_stats_sw_barbell <<- tibble(iteration = integer(),
+                                  nodes = integer(),
+                                  endangered = integer(),
+                                  precarity_proportion = numeric(),
+                                  total_resources = numeric(),
+                                  median_resources = numeric(),
+                                  mean_resources = numeric(),
+                                  global_funds = numeric(),
+                                  node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    set.seed(333^3)
+    p1 <- ggraph(graph_sw, layout = 'nicely') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) + 
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) 
+      ) +
+      scale_edge_width_continuous(
+        limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Watts–Strogatz (small world) graph: barbell strategy',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_sw)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    
+    p2 <- as.list(graph_sw)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_sw_barbell_row <- tibble_row(iteration = counter,
+                                           nodes = length(as.list(graph_sw)$nodes$endangered),
+                                           endangered = sum(as.list(graph_sw)$nodes$endangered),
+                                           precarity_proportion = sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                           total_resources = sum(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                           median_resources = median(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                           mean_resources = mean(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                           global_funds = ifelse(exists('global_fund'), global_fund, 0.0),
+                                           node_list = list(as_tibble(as.list(graph_sw)$nodes)$resources)
+    )
+    
+    sim_stats_sw_barbell <<- sim_stats_sw_barbell %>% bind_rows(sim_stats_sw_barbell_row)
+    
+    # increment graph via increment function
+    graph_sw <- graph_sim_increment(graph_sw)
+    
+    # apply barbell solidarity strategy
+    graph_sw <- graph_sim_barbell_strategy(graph_sw)
+    
+    counter <- counter+1
+  }
+}
+
+# SW memelord strategy simulation & animation
+memelord_gif_maker_sw <- function(years){
+  
+  # create empty tibble to store values from each iteration
+  sim_stats_sw_memelord <<- tibble(iteration = integer(),
+                                  nodes = integer(),
+                                  endangered = integer(),
+                                  precarity_proportion = numeric(),
+                                  total_resources = numeric(),
+                                  median_resources = numeric(),
+                                  mean_resources = numeric(),
+                                  node_list = list()
+  )
+  
+  # loop thru iterations
+  counter <- 1
+  while( counter <= (12*years)){
+    set.seed(333^3)
+    p1 <- ggraph(graph_sw, layout = 'nicely') + 
+      geom_edge_link(aes(width = edge_weight, 
+                         alpha = edge_weight)) + 
+      geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+      scale_color_manual(values = c('steelblue', 'red')) +
+      scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+      scale_size_continuous(
+        breaks = c(100,1000,5000,10000,20000),
+        limits = c(0, 10000000),
+        range = c(1, 217) 
+      ) +
+      scale_edge_width_continuous(
+        limits = c(0, 1),
+        range = c(0, .77)
+      ) +
+      labs(title = 'Watts–Strogatz (small world) graph: memelord strategy',
+           subtitle=paste('iteration:', counter, '    ',
+                          'endangered: ', sum(as.list(graph_sw)$nodes$endangered),
+                          '    precarity proportion: ', 
+                          round(sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                3) * 100, '%')) +
+      theme_graph() + theme(plot.margin = margin(.3, .3, .3, .3, "cm"))
+    
+    
+    p2 <- as.list(graph_sw)$nodes %>% as_tibble() %>% filter(resources < 1000) %>% 
+      ggplot() + geom_area(aes(resources), stat = 'density') + 
+      theme_minimal() + 
+      theme(axis.text.y = element_blank(), axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_markdown(size = rel(0.75))) +
+      geom_vline(xintercept =  15, color = "red3",
+                 linetype = "dashed", size = .7) +
+      geom_vline(xintercept =  median(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "seagreen",
+                 linetype = "solid", size = 1) +
+      geom_vline(xintercept =  mean(as_tibble(as.list(graph_sw)$nodes)$resources), 
+                 color = "green2",
+                 linetype = "solid", size = .7) +
+      xlab("resource distribution (w/ <span style='color:#FF0000;'>**precarity**</span> threshold, 
+           <span style='color:#008000;'>**median**</span> & <span style='color:#32CD32;'>**mean**</span> lines)") +
+      xlim(0, 1000) 
+    
+    patchplot <- p1 / p2 + plot_layout(widths = c(1, 1), heights = c(5.25,.75))  
+    
+    print(patchplot)
+    
+    # add row to tibble
+    sim_stats_sw_memelord_row <- tibble_row(iteration = counter,
+                                           nodes = length(as.list(graph_sw)$nodes$endangered),
+                                           endangered = sum(as.list(graph_sw)$nodes$endangered),
+                                           precarity_proportion = sum(as.list(graph_sw)$nodes$endangered) / length(as.list(graph_sw)$nodes$endangered),
+                                           total_resources = sum(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                           median_resources = median(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                           mean_resources = mean(as_tibble(as.list(graph_sw)$nodes)$resources),
+                                           node_list = list(as_tibble(as.list(graph_sw)$nodes)$resources)
+    )
+    
+    sim_stats_sw_memelord <<- sim_stats_sw_memelord %>% bind_rows(sim_stats_sw_memelord_row)
+    
+    # increment graph via increment function
+    graph_sw <- graph_sim_increment(graph_sw)
+    
+    # apply memelord solidarity strategy
+    graph_sw <- graph_sim_memelord_strategy(graph_sw)
+    
+    counter <- counter+1
+  }
+}
