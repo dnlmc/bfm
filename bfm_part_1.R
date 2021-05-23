@@ -1,4 +1,4 @@
-# Entire codebase for the blog post TK link
+# Entire codebase for the blog post: https://medium.com/@dnlmc/barbells-fractals-memelords-scaling-strategies-for-ethical-action-cca9a868b8a1
 
 library(tidyverse)
 library(tidygraph)
