@@ -82,6 +82,84 @@ graph_sw <- graph_sw %>% activate(nodes) %>% mutate(resources = resources,
                                                   endangered = resources < 15) %>% 
   activate(edges) %>% mutate(edge_weight = sw_friend_weight)  
   
+
+# core-periphery / hub score data for memelord strategy
+# calculate hub scores & add to graph nodes
+
+hub_scores_er <- igraph::hub_score(graph_er, weights = edge_weight)
+
+graph_er <- graph_er %>% activate(nodes) %>% 
+  mutate(hub_score_value = hub_scores_er$vector)
+
+
+hub_scores_ba <- hub_score(graph_ba) # weighting by edge weights was erroring here & i didn't feel like debugging so
+
+graph_ba <- graph_ba %>% activate(nodes) %>% 
+  mutate(hub_score_value = hub_scores_ba$vector)
+
+
+hub_scores_sw <- hub_score(graph_sw, edge_weight)
+
+graph_sw <- graph_sw %>% activate(nodes) %>% 
+  mutate(hub_score_value = hub_scores_sw$vector)
+
+
+
+##### static graph plots
+
+# ER
+set.seed(333^3)
+ggraph(graph_er, layout = 'nicely') + 
+  geom_edge_link(aes(width = edge_weight, alpha = edge_weight)) + 
+  geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+  scale_color_manual(values = c('steelblue', 'red2')) +
+  scale_alpha(range = c(0, 1), limits = c(0.12,.3), guide = 'none') +
+  scale_edge_width_continuous(limits = c(0, 1), range = c(0, .77) ) +
+  scale_size_continuous(breaks = c(100,1000,5000,10000,20000),
+    limits = c(0, 10000000),
+    range = c(1, 217) ) +
+  theme_graph()
+
+
+# BA
+set.seed(33)
+ggraph(graph_ba, layout = 'gem') + 
+  geom_edge_link(aes(width = edge_weight, 
+                     alpha = edge_weight)) + 
+  geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+  scale_color_manual(values = c('steelblue', 'red2')) +
+  scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+  scale_size_continuous(
+    breaks = c(100,1000,5000,10000,20000),
+    limits = c(0, 10000000),
+    range = c(1, 217) )  +
+  scale_edge_width_continuous(
+    limits = c(0, 1),
+    range = c(0, .77)
+  ) +
+  theme_graph()
+
+
+# SW
+set.seed(33)
+ggraph(graph_sw, layout = 'nicely') + 
+  geom_edge_link(aes(width = edge_weight, 
+                     alpha = edge_weight)) + 
+  geom_node_point(aes(size = resources, color = endangered, alpha = (1/log10(resources)) )) + 
+  scale_color_manual(values = c('steelblue', 'red2')) +
+  scale_alpha(range = c(0, 1), guide = 'none', limits = c(0.12,.3)) +
+  scale_size_continuous(
+    breaks = c(100,1000,5000,10000,20000),
+    limits = c(0, 10000000),
+    range = c(1, 217) 
+  ) +
+  scale_edge_width_continuous(
+    limits = c(0, 1),
+    range = c(0, .77)
+  ) +
+  theme_graph()
+
+
   
 ##### graph stats ------------------
 
@@ -157,11 +235,8 @@ as.list(graph_er)$edges$edge_weight %>% summary()
 
 # plot edge weight histogram & density
 as.list(graph_er)$edges %>% as_tibble() %>% 
-  ggplot() + geom_histogram(aes(edge_weight), binwidth = .03) + 
-  theme_minimal()
-
-as.list(test_sw)$edges %>% as_tibble() %>% 
-  ggplot() + geom_area(aes(edge_weight), stat = 'density') + 
+  ggplot(aes(edge_weight)) + geom_histogram(aes(y=..density..), binwidth = .03) + 
+  geom_density(aes(y=..density..)) +
   theme_minimal()
   
   
